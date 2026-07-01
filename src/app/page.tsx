@@ -4,15 +4,7 @@ import { ChangeEvent, useState } from "react";
 import * as XLSX from "xlsx";
 
 type SheetRow = Record<string, string>;
-type DiscoveryResponses = Record<number, Record<string, string>>;
-
-const DEFAULT_DISCOVERY_QUESTIONS = [
-  "What is the primary business need or goal for this procurement?",
-  "What is the desired timeline for completion?",
-  "Are there any specific vendors or solutions already in consideration?",
-  "What is the estimated budget range?",
-  "Who are the key stakeholders involved in this decision?",
-];
+type DiscoveryResponses = Record<number, string>;
 
 export default function Home() {
   const [rows, setRows] = useState<SheetRow[]>([]);
@@ -20,7 +12,7 @@ export default function Home() {
   const [selectedRow, setSelectedRow] = useState(0);
   const [status, setStatus] = useState("Upload an Excel file to import and fill out your procurement information.");
   const [fileName, setFileName] = useState("");
-  const [discoveryQuestions, setDiscoveryQuestions] = useState<string[]>(DEFAULT_DISCOVERY_QUESTIONS);
+  const [questionColumnIndex, setQuestionColumnIndex] = useState<number | null>(null);
   const [discoveryResponses, setDiscoveryResponses] = useState<DiscoveryResponses>({});
   const [submitStatus, setSubmitStatus] = useState<string>("");
 
@@ -60,6 +52,11 @@ export default function Home() {
       setHeaders(nextHeaders);
       setRows(normalizedRows);
       setSelectedRow(0);
+      
+      // Find the question column (look for "question" in the header name)
+      const qColIndex = nextHeaders.findIndex(h => h.toLowerCase().includes("question"));
+      setQuestionColumnIndex(qColIndex >= 0 ? qColIndex : null);
+      
       setStatus(`Loaded ${normalizedRows.length} item${normalizedRows.length === 1 ? "" : "s"} from ${file.name}.`);
     } catch (error) {
       console.error(error);
@@ -79,13 +76,10 @@ export default function Home() {
     setSelectedRow(rows.length);
   };
 
-  const updateDiscoveryResponse = (rowIndex: number, questionIndex: number, value: string) => {
+  const updateDiscoveryResponse = (rowIndex: number, value: string) => {
     setDiscoveryResponses((prev) => ({
       ...prev,
-      [rowIndex]: {
-        ...(prev[rowIndex] || {}),
-        [questionIndex]: value,
-      },
+      [rowIndex]: value,
     }));
   };
 
@@ -95,23 +89,36 @@ export default function Home() {
       return;
     }
 
-    const submissionData = {
-      timestamp: new Date().toISOString(),
-      records: rows.map((row, index) => ({
-        recordData: row,
-        discoveryAnswers: discoveryResponses[index] || {},
-      })),
-    };
+    // Update rows with discovery answers in column G
+    const updatedRows = rows.map((row, index) => {
+      const answer = discoveryResponses[index] || "";
+      return {
+        ...row,
+        ["Discovery Answer"]: answer,
+      };
+    });
 
-    console.log("Form submission:", submissionData);
-    setSubmitStatus("✓ Form submitted successfully! Check the console for details.");
-    
+    // Create a new workbook with the updated data
+    const ws = XLSX.utils.json_to_sheet(updatedRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Procurement Data");
+
+    // Set column widths for better readability
+    const maxWidth = 50;
+    ws["!cols"] = Object.keys(updatedRows[0] || {}).map(() => ({ wch: maxWidth }));
+
+    // Download the file
+    XLSX.writeFile(wb, `procurement-submission-${new Date().toISOString().split("T")[0]}.xlsx`);
+
+    setSubmitStatus("✓ Form submitted! Excel file downloaded with discovery answers in column G.");
+
     // Reset status after 5 seconds
     setTimeout(() => setSubmitStatus(""), 5000);
   };
 
   const currentRow = rows[selectedRow];
-  const currentDiscoveryResponses = discoveryResponses[selectedRow] || {};
+  const currentDiscoveryQuestion = questionColumnIndex !== null ? currentRow?.[headers[questionColumnIndex]] : null;
+  const currentDiscoveryResponse = discoveryResponses[selectedRow] || "";
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
@@ -211,26 +218,26 @@ export default function Home() {
 
                 <div className="mt-8 border-t border-slate-800 pt-8">
                   <div className="mb-6">
-                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Discovery questions</p>
-                    <h3 className="text-xl font-semibold text-white">Fill out the discovery questionnaire</h3>
+                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">AI Discovery Question</p>
+                    <h3 className="text-xl font-semibold text-white">Answer the discovery question</h3>
                   </div>
 
-                  <div className="space-y-4">
-                    {discoveryQuestions.map((question, qIndex) => (
-                      <label key={qIndex} className="flex flex-col gap-2 text-sm text-slate-300">
-                        <span className="font-medium text-slate-200">
-                          {qIndex + 1}. {question}
-                        </span>
-                        <textarea
-                          className="rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100 outline-none ring-0 transition focus:border-cyan-500"
-                          value={currentDiscoveryResponses[qIndex] ?? ""}
-                          onChange={(event) => updateDiscoveryResponse(selectedRow, qIndex, event.target.value)}
-                          placeholder="Enter your response..."
-                          rows={3}
-                        />
-                      </label>
-                    ))}
-                  </div>
+                  {currentDiscoveryQuestion ? (
+                    <label className="flex flex-col gap-2 text-sm text-slate-300">
+                      <span className="font-medium text-slate-200">{currentDiscoveryQuestion}</span>
+                      <textarea
+                        className="rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100 outline-none ring-0 transition focus:border-cyan-500"
+                        value={currentDiscoveryResponse}
+                        onChange={(event) => updateDiscoveryResponse(selectedRow, event.target.value)}
+                        placeholder="Enter your response..."
+                        rows={4}
+                      />
+                    </label>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-4 text-center text-slate-400">
+                      No discovery question found for this record. Make sure your Excel file has a column with "Question" in the header name.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between">
