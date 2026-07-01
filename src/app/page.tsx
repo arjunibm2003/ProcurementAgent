@@ -89,36 +89,46 @@ export default function Home() {
       return;
     }
 
-    // Update rows with discovery answers in column G
+    if (!canSubmit) {
+      setSubmitStatus("Answer every discovery question before submitting.");
+      return;
+    }
+
+    const answerColumnHeader = "Discovery Answer";
     const updatedRows = rows.map((row, index) => {
       const answer = discoveryResponses[index] || "";
-      return {
-        ...row,
-        ["Discovery Answer"]: answer,
-      };
+      const exportRow: Record<string, string> = {};
+
+      headers.forEach((header, headerIndex) => {
+        exportRow[header] = row[header] ?? "";
+
+        if (headerIndex === questionColumnIndex) {
+          exportRow[answerColumnHeader] = answer;
+        }
+      });
+
+      return exportRow;
     });
 
-    // Create a new workbook with the updated data
     const ws = XLSX.utils.json_to_sheet(updatedRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Procurement Data");
 
-    // Set column widths for better readability
     const maxWidth = 50;
     ws["!cols"] = Object.keys(updatedRows[0] || {}).map(() => ({ wch: maxWidth }));
 
-    // Download the file
     XLSX.writeFile(wb, `procurement-submission-${new Date().toISOString().split("T")[0]}.xlsx`);
 
-    setSubmitStatus("✓ Form submitted! Excel file downloaded with discovery answers in column G.");
+    setSubmitStatus("✓ Form submitted! Excel file downloaded with discovery answers beside the question column.");
 
-    // Reset status after 5 seconds
     setTimeout(() => setSubmitStatus(""), 5000);
   };
 
   const currentRow = rows[selectedRow];
   const currentDiscoveryQuestion = questionColumnIndex !== null ? currentRow?.[headers[questionColumnIndex]] : null;
   const currentDiscoveryResponse = discoveryResponses[selectedRow] || "";
+  const hasQuestionColumn = questionColumnIndex !== null;
+  const canSubmit = rows.length > 0 && (!hasQuestionColumn || rows.every((_, index) => (discoveryResponses[index] || "").trim().length > 0));
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
@@ -240,18 +250,24 @@ export default function Home() {
                   )}
                 </div>
 
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between">
-                  <div>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-2">
                     {submitStatus && (
                       <p className={`text-sm font-medium ${submitStatus.includes("✓") ? "text-green-400" : "text-amber-400"}`}>
                         {submitStatus}
                       </p>
                     )}
+                    {canSubmit ? (
+                      <p className="text-sm text-emerald-400">All discovery questions are answered and the form is ready to submit.</p>
+                    ) : (
+                      <p className="text-sm text-amber-400">Answer each discovery question before submitting the form.</p>
+                    )}
                   </div>
                   <button
                     type="button"
                     onClick={handleSubmitForm}
-                    className="rounded-2xl bg-cyan-600 px-6 py-3 font-medium text-white transition hover:bg-cyan-500 active:bg-cyan-700"
+                    disabled={!canSubmit}
+                    className={`rounded-2xl px-6 py-3 font-medium text-white transition ${canSubmit ? "bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700" : "cursor-not-allowed bg-slate-700 text-slate-400"}`}
                   >
                     Submit Form
                   </button>
