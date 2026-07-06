@@ -130,6 +130,19 @@ export default function Home() {
   const hasQuestionColumn = questionColumnIndex !== null;
   const canSubmit = rows.length > 0 && (!hasQuestionColumn || rows.every((_, index) => (discoveryResponses[index] || "").trim().length > 0));
 
+  const hiddenHeaders = new Set([
+    "__EMPTY",
+    "FSM-First Design Guidance",
+    "Recommended Oracle Capability",
+    "Dependencies / Cross-Functional Impact",
+    "Leading Practice Guidance",
+    "Output Asset Trigger",
+    "When BPM May Be Needed",
+    "Primary Configuration Object",
+  ]);
+
+  const formHeaders = headers.filter((header) => !hiddenHeaders.has(header));
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -213,7 +226,7 @@ export default function Home() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  {headers.map((header) => (
+                  {formHeaders.map((header) => (
                     <label key={header} className="flex flex-col gap-2 text-sm text-slate-300">
                       <span className="font-medium text-slate-200">{header}</span>
                       <input
