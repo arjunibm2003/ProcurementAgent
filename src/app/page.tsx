@@ -246,14 +246,14 @@ export default function Home() {
                   </div>
 
                   {currentDiscoveryQuestion ? (
-                    <label className="flex flex-col gap-2 text-sm text-slate-300">
-                      <span className="font-medium text-slate-200">{currentDiscoveryQuestion}</span>
+                    <label className="flex flex-col gap-3 text-base text-slate-300">
+                      <span className="font-semibold text-slate-200 text-lg">{currentDiscoveryQuestion}</span>
                       <textarea
-                        className="rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100 outline-none ring-0 transition focus:border-cyan-500"
+                        className="min-h-[220px] rounded-3xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-base leading-7 text-slate-100 outline-none ring-0 transition focus:border-cyan-500"
                         value={currentDiscoveryResponse}
                         onChange={(event) => updateDiscoveryResponse(selectedRow, event.target.value)}
                         placeholder="Enter your response..."
-                        rows={4}
+                        rows={6}
                       />
                     </label>
                   ) : (
