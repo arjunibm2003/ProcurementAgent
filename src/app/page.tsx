@@ -139,9 +139,22 @@ export default function Home() {
     "Output Asset Trigger",
     "When BPM May Be Needed",
     "Primary Configuration Object",
+    "KDD ID",
+    "Business context / Why it matters",
+    "Business context",
+    "Why it matters",
   ]);
 
-  const formHeaders = headers.filter((header) => !hiddenHeaders.has(header));
+  const hiddenHeaderTerms = [
+    "kdd id",
+    "business context",
+    "why it matters",
+  ];
+
+  const formHeaders = headers.filter((header) => {
+    const normalized = header.trim().toLowerCase();
+    return !hiddenHeaders.has(header) && !hiddenHeaderTerms.some((term) => normalized.includes(term));
+  });
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
